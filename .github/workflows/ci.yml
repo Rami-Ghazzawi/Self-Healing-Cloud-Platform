@@ -30,15 +30,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Check files
-        run: |
-           pwd
-           ls -la
-           ls -la app
            
       - name: Build Docker image
-        run: docker build -t myapp:${{ github.sha }} ./app
+        run: docker build -t myapp:${{ github.sha }}
 
 
       - name: Setup Terraform
