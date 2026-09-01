@@ -1,0 +1,14 @@
+{
+  "name": "self-healing-task-manager",
+  "version": "1.0.0",
+  "description": "Production-style task manager API for a self-healing AWS 3-tier architecture",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "pg": "^8.16.3"
+  }
+}
