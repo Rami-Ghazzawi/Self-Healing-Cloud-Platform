@@ -28,12 +28,13 @@ jobs:
           cache: npm
           cache-dependency-path: app/package-lock.json
 
-      - name: Install dependencies
-        run: npm ci
-           
-      - name: Build Docker image
-        run: docker build -t myapp:${{ github.sha }}
 
+      - name: Install dependencies
+        working-directory: app
+        run: npm ci
+
+      - name: Build Docker image
+        run: docker build -t myapp:${{ github.sha }} ./app
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
