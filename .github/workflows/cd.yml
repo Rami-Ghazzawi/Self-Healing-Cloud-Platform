@@ -20,7 +20,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::016279725091:role/GitHubActions-SelfHealing
+          role-to-assume: arn:aws:iam::016279725091:role/GitHub-Self-HealingRole
           aws-region: eu-west-2
 
       - name: Verify AWS identity
