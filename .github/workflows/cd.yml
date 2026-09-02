@@ -6,22 +6,23 @@ on:
       - main
 
 permissions:
-  id-token: write
-  contents: read
+  id-token: write # Mandatory for requesting OIDC JSON Web Tokens
+  contents: read  # Required for checking out repository code
+
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
+      - name: Configure AWS Credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::016279725091:role/GitHubActions-SelfHealing
+          role-to-assume: arn:aws:iam::016279725091:role/GitHubActions-CD-Role
           aws-region: eu-west-2
 
-      - name: Verify AWS identity
+      - name: Verify Authentication
         run: aws sts get-caller-identity
