@@ -23,7 +23,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::016279725091:role/GitHub-Self-HealingRole
-          aws-region: eu-west-2
+          aws-region: eu-east-1
 
       - name: Verify AWS identity
         run: aws sts get-caller-identity
