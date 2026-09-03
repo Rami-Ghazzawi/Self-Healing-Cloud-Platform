@@ -1,4 +1,4 @@
-name: CD
+name: Continuous Deployment
 
 on:
   push:
@@ -13,9 +13,7 @@ jobs:
   authentication:
     name: AWS OIDC Authentication
     runs-on: ubuntu-latest
-
     steps:
-
       - name: Checkout code
         uses: actions/checkout@v4
 
