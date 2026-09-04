@@ -89,4 +89,3 @@ jobs:
         run: |
           docker push \
             016279725091.dkr.ecr.eu-west-2.amazonaws.com/dev-web-app:latest
-```
