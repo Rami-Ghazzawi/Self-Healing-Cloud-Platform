@@ -82,3 +82,11 @@ module "ecs" {
   execution_role_name = aws_iam_role.ecs_execution_role.name
   db_secret_arn       = module.rds.db_secret_arn
 }
+module "monitoring" {
+  source = "../../modules/monitoring"
+
+  environment    = "dev"
+  cluster_name   = module.ecs.cluster_name
+  service_name   = module.ecs.service_name
+  alb_arn_suffix = module.alb.alb_arn_suffix
+}

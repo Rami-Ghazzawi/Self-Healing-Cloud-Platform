@@ -10,12 +10,13 @@ resource "aws_cloudwatch_metric_alarm" "ecs_cpu_high" {
   namespace           = "AWS/ECS"
   period              = 60
   statistic           = "Average"
-  threshold           = 80
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  threshold           = var.cpu_threshold
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
 
   dimensions = {
-    ClusterName = aws_ecs_cluster.main.name
-    ServiceName = aws_ecs_service.main.name
+    ClusterName = var.cluster_name
+    ServiceName = var.service_name
   }
 }
 
@@ -27,10 +28,28 @@ resource "aws_cloudwatch_metric_alarm" "alb_5xx_errors" {
   namespace           = "AWS/ApplicationELB"
   period              = 60
   statistic           = "Sum"
-  threshold           = 10
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  threshold           = var.alb_5xx_threshold
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
 
   dimensions = {
-    LoadBalancer = aws_lb.main.arn_suffix
+    LoadBalancer = var.alb_arn_suffix
+  }
+}
+resource "aws_cloudwatch_metric_alarm" "ecs_memory_high" {
+  alarm_name          = "${var.environment}-ecs-memory-utilization-high"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 2
+  metric_name         = "MemoryUtilization"
+  namespace           = "AWS/ECS"
+  period              = 60
+  statistic           = "Average"
+  threshold           = 80
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+
+  dimensions = {
+    ClusterName = var.cluster_name
+    ServiceName = var.service_name
   }
 }

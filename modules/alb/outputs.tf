@@ -17,3 +17,7 @@ output "target_group_arn" {
   description = "ARN of the ALB Target Group used by ECS"
   value       = aws_lb_target_group.app.arn
 }
+output "alb_arn_suffix" {
+  description = "ARN suffix of the Application Load Balancer for CloudWatch metrics"
+  value       = aws_lb.main.arn_suffix
+}
