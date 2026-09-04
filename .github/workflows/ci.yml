@@ -18,9 +18,12 @@ jobs:
         working-directory: app
 
     steps:
+
+      # 1. Checkout the code
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 2. Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -28,25 +31,62 @@ jobs:
           cache: npm
           cache-dependency-path: app/package-lock.json
 
-
+      # 3. Install dependencies
       - name: Install dependencies
-        working-directory: app
         run: npm ci
 
-      - name: Build Docker image
-        run: docker build -t myapp:${{ github.sha }} .
-
+      # 4. Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
+      # 5. Terraform Format Check
       - name: Terraform Format Check
         working-directory: environments/dev
         run: terraform fmt -check -recursive
 
+      # 6. Terraform Init
       - name: Terraform Init
         working-directory: environments/dev
         run: terraform init -backend=false
 
+      # 7. Terraform Validate
       - name: Terraform Validate
         working-directory: environments/dev
         run: terraform validate
+
+      # 8. Configure AWS credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+
+      # 9. Verify AWS identity
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      # 10. Login to Amazon ECR
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # 11. Build Docker image
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t dev-web-app:latest \
+            .
+
+      # 12. Tag Docker image for ECR
+      - name: Tag Docker image
+        run: |
+          docker tag \
+            dev-web-app:latest \
+            016279725091.dkr.ecr.eu-west-2.amazonaws.com/dev-web-app:latest
+
+      # 13. Push Docker image to ECR
+      - name: Push Docker image
+        run: |
+          docker push \
+            016279725091.dkr.ecr.eu-west-2.amazonaws.com/dev-web-app:latest
+```
