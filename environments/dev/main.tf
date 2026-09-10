@@ -9,6 +9,18 @@ provider "aws" {
     }
   }
 }
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.61.0"
+    }
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.4"
+    }
+  }
+}
 
 # 1. IAM Execution Role for ECS Tasks
 resource "aws_iam_role" "ecs_execution_role" {
@@ -89,4 +101,27 @@ module "monitoring" {
   cluster_name   = module.ecs.cluster_name
   service_name   = module.ecs.service_name
   alb_arn_suffix = module.alb.alb_arn_suffix
+}
+module "self_healing" {
+  source = "../../modules/self-healing"
+
+  environment = "dev"
+
+  aws_region = "eu-west-2"
+
+  ecs_cluster = module.ecs.cluster_name
+
+  ecs_service = module.ecs.service_name
+
+  target_group_arn = module.alb.target_group_arn
+
+  min_tasks = 2
+
+  max_tasks = 5
+
+  cpu_scale_increment = 1
+
+  max_retries = 3
+
+  cooldown_seconds = 120
 }
