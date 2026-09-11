@@ -1,590 +1,405 @@
 # Autonomous Self-Healing Cloud Platform
 
-An AWS-based cloud platform designed to automatically detect infrastructure and application health issues, perform controlled recovery actions, verify recovery, and escalate when automated healing reaches its safety limits.
+## 1. Overview
 
-The platform combines Infrastructure as Code, containerization, CI/CD, centralized monitoring, event-driven automation, and controlled chaos testing.
+The **Autonomous Self-Healing Cloud Platform** is a production-style cloud infrastructure project designed to automatically detect infrastructure and application failures, perform controlled recovery actions, and verify that the system has successfully recovered.
+
+The platform is built on **Amazon Web Services (AWS)** and uses an event-driven architecture combining containerized workloads, centralized monitoring, infrastructure as code, and automated recovery.
+
+The main goal of the project is to demonstrate how cloud infrastructure can move beyond simple monitoring and alerting toward **autonomous failure detection and controlled recovery**.
 
 ---
 
-## 1. Project Overview
+## 2. Objectives
 
-Modern cloud applications must remain available even when individual components experience failures or resource exhaustion.
+The platform was designed to achieve the following objectives:
 
-This project implements an autonomous self-healing mechanism on AWS that continuously observes the health of a containerized application and reacts to predefined failure conditions.
+- Deploy a containerized application using AWS ECS Fargate.
+- Provide application traffic through an Application Load Balancer.
+- Store persistent application data in Amazon RDS PostgreSQL.
+- Monitor infrastructure health using Amazon CloudWatch.
+- Detect abnormal CPU, memory, and HTTP error conditions.
+- Automatically trigger recovery actions when predefined failure conditions occur.
+- Enforce explicit safety boundaries on automated recovery.
+- Verify that recovery actions actually restore the system to a healthy state.
+- Provision the infrastructure using Terraform.
+- Automate application delivery using GitHub Actions.
 
-The platform follows this general lifecycle:
+---
+
+## 3. Architecture
+
+The platform follows an event-driven self-healing architecture.
 
 ```text
-Deploy
-  ↓
-Observe
-  ↓
-Detect
-  ↓
-Decide
-  ↓
-Heal
-  ↓
-Verify
-  ↓
-Recover
-  ↓
-Escalate if necessary
+                           ┌───────────────┐
+                           │     Users     │
+                           └───────┬───────┘
+                                   │
+                                   ▼
+                         ┌──────────────────┐
+                         │ Application      │
+                         │ Load Balancer    │
+                         └────────┬─────────┘
+                                  │
+                                  ▼
+                    ┌─────────────────────────┐
+                    │       ECS Fargate       │
+                    │                         │
+                    │  ┌───────┐  ┌───────┐   │
+                    │  │ Task  │  │ Task  │   │
+                    │  │ App   │  │ App   │   │
+                    │  └───────┘  └───────┘   │
+                    └──────────┬──────────────┘
+                               │
+                    ┌──────────┴──────────┐
+                    │                     │
+                    ▼                     ▼
+             ┌─────────────┐       ┌─────────────┐
+             │ RDS         │       │ CloudWatch  │
+             │ PostgreSQL  │       │ Monitoring  │
+             └─────────────┘       └──────┬──────┘
+                                          │
+                                   Alarm triggered
+                                          │
+                                          ▼
+                                  ┌───────────────┐
+                                  │  EventBridge  │
+                                  └───────┬───────┘
+                                          │
+                                          ▼
+                                  ┌───────────────┐
+                                  │ Self-Healing  │
+                                  │    Lambda     │
+                                  └───────┬───────┘
+                                          │
+                               Controlled recovery
+                                          │
+                                          ▼
+                                  ┌───────────────┐
+                                  │ ECS / ALB     │
+                                  │ Recovery      │
+                                  └───────┬───────┘
+                                          │
+                                          ▼
+                                  Recovery verified
 ```
 
-The primary goal is not simply to restart failed containers, but to demonstrate a controlled automation loop that can:
+The infrastructure is provisioned using Terraform modules for:
 
-- Detect abnormal conditions
-- Identify the appropriate recovery action
-- Apply bounded corrective actions
-- Avoid uncontrolled scaling
-- Verify whether recovery succeeded
-- Retry when appropriate
-- Escalate when automated recovery is no longer safe
-
----
-
-## 2. Architecture
-
-The platform is deployed on AWS using Terraform.
-
-### High-Level Architecture
-
-```text
-                         Internet
-                            │
-                            ▼
-                     ┌─────────────┐
-                     │     ALB     │
-                     └──────┬──────┘
-                            │
-                            ▼
-                 ┌────────────────────┐
-                 │    ECS Fargate     │
-                 │                    │
-                 │  ┌──────┐ ┌──────┐ │
-                 │  │Task 1│ │Task 2│ │
-                 │  └──────┘ └──────┘ │
-                 │       + scaling     │
-                 └─────────┬──────────┘
-                           │
-                 ┌─────────┴─────────┐
-                 │                   │
-                 ▼                   ▼
-          ┌────────────┐      ┌────────────┐
-          │ RDS        │      │ Secrets    │
-          │ PostgreSQL │      │ Manager    │
-          └────────────┘      └────────────┘
-
-                 Monitoring Layer
-                        │
-                        ▼
-                 ┌─────────────┐
-                 │ CloudWatch  │
-                 └──────┬──────┘
-                        │
-                        ▼
-                 ┌─────────────┐
-                 │ EventBridge │
-                 └──────┬──────┘
-                        │
-                        ▼
-                 ┌─────────────┐
-                 │   Lambda    │
-                 │ Self-Healing│
-                 └──────┬──────┘
-                        │
-              ┌─────────┼─────────┐
-              ▼         ▼         ▼
-             ECS       ALB      Scheduler
-```
-
-Detailed architecture documentation is available in:
-
-`docs/architecture.md`
+- VPC networking
+- Application Load Balancer
+- Amazon ECR
+- Amazon ECS
+- Amazon RDS
+- CloudWatch monitoring
+- Self-healing automation
 
 ---
 
-## 3. Technology Stack
+## 4. Technology Stack
 
-| Layer                  | Technology                      |
-| ---------------------- | ------------------------------- |
-| Cloud Provider         | AWS                             |
-| Infrastructure as Code | Terraform                       |
-| Containers             | Docker                          |
-| Container Platform     | Amazon ECS Fargate              |
-| Container Registry     | Amazon ECR                      |
-| Load Balancer          | Application Load Balancer       |
-| Database               | Amazon RDS PostgreSQL           |
-| Secrets                | AWS Secrets Manager             |
-| Monitoring             | Amazon CloudWatch               |
-| Event Routing          | Amazon EventBridge              |
-| Automation             | AWS Lambda                      |
-| Scheduling             | EventBridge Scheduler           |
-| CI/CD                  | GitHub Actions                  |
-| Application            | Node.js / Express               |
-| Testing                | Chaos Engineering + `stress-ng` |
+| Category                | Technology                |
+| ----------------------- | ------------------------- |
+| Cloud Provider          | AWS                       |
+| Infrastructure as Code  | Terraform                 |
+| Container Platform      | Docker                    |
+| Container Orchestration | Amazon ECS Fargate        |
+| Container Registry      | Amazon ECR                |
+| Load Balancing          | Application Load Balancer |
+| Database                | Amazon RDS PostgreSQL     |
+| Monitoring              | Amazon CloudWatch         |
+| Event Routing           | Amazon EventBridge        |
+| Notifications           | Amazon SNS                |
+| Automation              | AWS Lambda                |
+| CI/CD                   | GitHub Actions            |
+| Application             | Node.js / Express         |
+| Runtime Automation      | Python / Bash             |
+| Networking              | Amazon VPC                |
 
 ---
 
-## 4. Infrastructure
+## 5. Infrastructure Modules
 
-The infrastructure is provisioned using Terraform.
-
-The project follows a modular structure:
+The Terraform infrastructure is organized into reusable modules.
 
 ```text
 modules/
-├── vpc/
 ├── alb/
 ├── ecr/
 ├── ecs/
+├── monitoring/
 ├── rds/
-└── monitoring/
+├── self-healing/
+└── vpc/
 ```
 
-The development environment is located under:
+### VPC
 
-```text
-environments/dev/
-```
+Provides the networking foundation for the platform, including the network environment required by the application and database components.
 
-The infrastructure includes:
+### ALB
 
-- VPC networking
-- ECS cluster and service
-- ECS Fargate tasks
-- ECR repository
-- Application Load Balancer
-- RDS PostgreSQL
-- Secrets Manager
-- CloudWatch monitoring
-- CloudWatch alarms
+Provides public HTTP access to the application and distributes traffic across healthy ECS tasks.
+
+### ECR
+
+Stores the Docker images used by the ECS application.
+
+### ECS
+
+Runs the containerized application using Amazon ECS Fargate.
+
+### RDS
+
+Provides persistent PostgreSQL database storage for the application.
+
+### Monitoring
+
+Defines CloudWatch metrics and alarms used to observe the health of the infrastructure.
+
+### Self-Healing
+
+Contains the autonomous recovery mechanism, including:
+
+- AWS Lambda
 - EventBridge rules
-- Self-healing Lambda
+- SNS integration
 - IAM roles and policies
-- EventBridge Scheduler
-
-Detailed infrastructure documentation:
-
-`docs/infrastructure.md`
+- CloudWatch logging
+- Recovery scheduling
 
 ---
 
-## 5. Application
+## 6. Monitoring and Observability
 
-The platform runs a containerized Node.js/Express application.
+Amazon CloudWatch is used as the primary monitoring system.
 
-The application exposes:
-
-```text
-GET /health
-GET /api/tasks
-```
-
-The `/health` endpoint is used by the Application Load Balancer to determine whether an application task is healthy.
-
-The application listens on:
-
-```text
-Port: 8080
-```
-
-The container image is stored in Amazon ECR.
-
----
-
-## 6. CI/CD
-
-GitHub Actions automates the build and deployment workflow.
-
-### Continuous Integration
-
-Pull requests and pushes trigger validation steps including:
-
-```text
-Checkout
-   ↓
-Install Dependencies
-   ↓
-Docker Build
-   ↓
-Terraform Init
-   ↓
-Terraform Format Check
-   ↓
-Terraform Validate
-```
-
-### Continuous Deployment
-
-Changes merged to the deployment branch trigger:
-
-```text
-Git Push
-   ↓
-GitHub Actions
-   ↓
-Docker Build
-   ↓
-Push Image → ECR
-   ↓
-Update ECS Deployment
-   ↓
-New Fargate Tasks
-   ↓
-ALB Health Check
-```
-
-Detailed CI/CD documentation:
-
-`docs/ci-cd.md`
-
----
-
-## 7. Monitoring
-
-Amazon CloudWatch provides observability into the ECS service.
-
-The platform monitors metrics including:
+The platform monitors signals including:
 
 - ECS CPU utilization
 - ECS memory utilization
 - Live task count
-- ALB HTTP 5XX errors
-- Application logs
+- Application Load Balancer HTTP 5XX errors
 
-CloudWatch alarms detect abnormal conditions.
+When a monitored condition exceeds its configured threshold, CloudWatch changes the corresponding alarm state.
 
-Example CPU alarm:
+The alarm event is then processed by the event-driven recovery system.
+
+Monitoring is therefore separated from recovery:
 
 ```text
-Metric:
-ECS CPUUtilization
-
-Threshold:
-80%
-
-Evaluation:
-2 consecutive periods
-
-Statistic:
-Average
+CloudWatch
+    │
+    │ Detect
+    ▼
+Alarm
+    │
+    │ Event
+    ▼
+EventBridge
+    │
+    │ Trigger
+    ▼
+Self-Healing Lambda
 ```
-
-Monitoring documentation:
-
-`docs/monitoring.md`
 
 ---
 
-## 8. Self-Healing
+## 7. Self-Healing Mechanism
 
-The core of the project is an event-driven self-healing controller implemented using AWS Lambda.
+The core of the platform is the **Self-Healing Controller**, implemented as an AWS Lambda function.
 
-The controller receives events generated from CloudWatch alarms through EventBridge.
+The controller receives events associated with infrastructure health conditions and determines whether a controlled recovery action should be performed.
+
+The recovery process follows this general flow:
 
 ```text
+Failure Condition
+       │
+       ▼
 CloudWatch Alarm
        │
        ▼
-  EventBridge
+EventBridge
        │
        ▼
 Self-Healing Lambda
        │
        ▼
-   Diagnosis
+Validate Recovery Conditions
        │
        ▼
-Recovery Action
+Execute Controlled Action
        │
        ▼
-Verification
+Monitor Result
+       │
+       ▼
+Recovery Confirmed
 ```
 
-The controller supports controlled recovery actions such as:
+The controller is designed with explicit safety boundaries to prevent uncontrolled infrastructure changes.
 
-- Scaling ECS service capacity
-- Replacing unhealthy ECS tasks
-- Inspecting ALB target health
-- Retrying recovery
-- Detecting successful recovery
-- Escalating when safety limits are reached
+Examples of controlled operations include ECS service and task management.
 
-The system does not blindly restart infrastructure.
+The Lambda execution role is restricted to the AWS operations required by the recovery mechanism.
 
-Instead, it follows a decision-based recovery process.
+---
 
-Detailed documentation:
+## 8. Recovery Verification
 
-`docs/self-healing.md`
+Recovery is not considered successful simply because a recovery action was executed.
+
+The platform verifies the resulting system state.
+
+A successful recovery produces the following logical sequence:
+
+```text
+Alarm: ALARM
+      │
+      ▼
+Recovery Action
+      │
+      ▼
+System Stabilization
+      │
+      ▼
+Alarm: OK
+      │
+      ▼
+RECOVERY_CONFIRMED
+```
+
+The `RECOVERY_CONFIRMED` event provides explicit evidence that the controller observed a successful recovery state.
+
+This distinction is important because **executing a recovery action and proving that recovery succeeded are two different operations**.
 
 ---
 
 ## 9. Safety Boundaries
 
-Self-healing automation must have explicit limits.
+Autonomous infrastructure operations must be constrained to prevent runaway recovery behavior.
 
-The platform therefore enforces:
+The self-healing controller therefore operates within predefined boundaries.
 
-```text
-MIN_TASKS = 2
-MAX_TASKS = 5
-CPU_SCALE_INCREMENT = 1
-MAX_RETRIES = 3
-COOLDOWN = 120 seconds
-```
+The safety mechanism limits the scope of automated recovery and prevents the controller from continuously increasing resources without control.
 
-Example:
+This was validated through dedicated safe-boundary testing.
 
-```text
-2 tasks
-   ↓
-3 tasks
-   ↓
-4 tasks
-   ↓
-5 tasks
-   ↓
-MAXIMUM REACHED
-   ↓
-ESCALATE
-```
-
-The controller will never automatically scale the service beyond the configured maximum.
-
-This prevents an abnormal condition from creating uncontrolled infrastructure growth and unexpected costs.
-
----
-
-## 10. Recovery Verification
-
-Healing is not considered successful simply because an action was executed.
-
-After a recovery action, the controller schedules a delayed verification using EventBridge Scheduler.
+The objective is to ensure that:
 
 ```text
 Failure
   ↓
-Healing Action
-  ↓
-Cooldown
+Recovery
   ↓
 Verification
-  ↓
-CloudWatch Alarm State
-  │
-  ├── OK → RECOVERY_CONFIRMED
-  │
-  └── ALARM
-        ↓
-      Retry
-        ↓
-      Escalate
 ```
 
-This separates healing from verification and avoids blocking Lambda execution with `sleep()`.
+does not become:
+
+```text
+Failure
+  ↓
+Unlimited Recovery
+  ↓
+Uncontrolled Resource Usage
+```
 
 ---
 
-## 11. Chaos Engineering
+## 10. Testing
 
-The platform is validated using controlled failure injection.
+The platform was tested using controlled failure scenarios.
 
-The main objective is to verify that the self-healing mechanism behaves correctly under realistic failure conditions.
+### CPU Self-Healing Test
 
-The current chaos tests include:
-
-### Test 1 — CPU Self-Healing
-
-Inject high CPU utilization using:
-
-```bash
-stress-ng --cpu 4 --timeout 300s
-```
+A sustained CPU load is introduced to the application environment.
 
 Expected behavior:
 
 ```text
 High CPU
    ↓
-CloudWatch ALARM
+CloudWatch CPU Alarm
    ↓
 EventBridge
    ↓
-Lambda
+Self-Healing Lambda
    ↓
-Scale ECS
-```
-
-Observed behavior:
-
-```text
-CPU ≈ 95% average
-Maximum ≈ 100%
-
-2 tasks → 3 tasks
-```
-
-Result:
-
-```text
-PASS
-```
-
----
-
-### Test 2 — Maximum Scaling Safety Boundary
-
-The service is intentionally driven through multiple scaling events:
-
-```text
-2 → 3 → 4 → 5
-```
-
-At five tasks, another high CPU condition is introduced.
-
-Expected behavior:
-
-```text
-5 tasks
+ECS Recovery Action
    ↓
-High CPU
-   ↓
-MAX_TASKS_REACHED
-   ↓
-ESCALATE
+System Stabilization
 ```
 
-The controller must not create a sixth task.
+### Safe Boundary Test
 
----
+The test verifies that the self-healing controller cannot exceed its configured recovery limits.
 
-### Test 3 — Recovery Detection
+### Recovery Test
 
-After the failure condition is removed:
+The test verifies that the controller performs the expected recovery action after a failure condition is detected.
 
-```text
-ALARM
-  ↓
-OK
-```
+### Recovery Verification Test
 
-The self-healing controller should detect the recovered CloudWatch alarm state and log:
+The final system state is verified to ensure that the recovery was actually successful.
+
+The controller logs:
 
 ```text
 RECOVERY_CONFIRMED
 ```
 
-Complete test evidence and procedures are documented in:
-
-`docs/chaos-testing.md`
+when recovery has been successfully verified.
 
 ---
 
-## 12. Project Documentation
+## 11. CI/CD
 
-| Document            | Purpose                                        |
-| ------------------- | ---------------------------------------------- |
-| `architecture.md`   | System architecture and component interactions |
-| `infrastructure.md` | Terraform and AWS infrastructure               |
-| `ci-cd.md`          | GitHub Actions build/deployment pipeline       |
-| `monitoring.md`     | CloudWatch metrics, alarms and logs            |
-| `self-healing.md`   | Autonomous recovery mechanism                  |
-| `chaos-testing.md`  | Failure injection and validation               |
+The project uses GitHub Actions to automate the software delivery workflow.
 
----
+The CI pipeline validates the application and infrastructure changes before deployment.
 
-## 13. Design Principles
+The deployment workflow builds the application container, publishes the image to Amazon ECR, and updates the ECS service.
 
-The platform was designed around several principles:
-
-### Automation
-
-Infrastructure recovery should require minimal manual intervention.
-
-### Observability
-
-The system must detect and understand abnormal behavior before attempting recovery.
-
-### Controlled Recovery
-
-Recovery actions must be bounded and deterministic.
-
-### Verification
-
-A recovery action must be followed by verification.
-
-### Idempotency
-
-Repeated events should not result in uncontrolled infrastructure changes.
-
-### Safety
-
-The system must have explicit scaling and retry limits.
-
-### Cost Awareness
-
-The infrastructure is designed to remain suitable for development and academic experimentation.
-
----
-
-## 14. Project Status
-
-Current implementation includes:
-
-- [x] Terraform infrastructure
-- [x] Modular AWS architecture
-- [x] Dockerized application
-- [x] ECS Fargate deployment
-- [x] ECR
-- [x] Application Load Balancer
-- [x] RDS PostgreSQL
-- [x] Secrets Manager
-- [x] GitHub Actions CI
-- [x] GitHub Actions CD
-- [x] CloudWatch metrics
-- [x] CloudWatch alarms
-- [x] EventBridge event routing
-- [x] Self-healing Lambda
-- [x] EventBridge Scheduler verification
-- [x] ECS controlled scaling
-- [x] Recovery detection
-- [x] Chaos testing
-- [x] Safety boundary testing
-
----
-
-## 15. Future Improvements
-
-Potential future improvements include:
-
-- GitHub Actions OIDC instead of long-lived AWS credentials
-- HTTPS with ACM and Route 53
-- More sophisticated anomaly detection
-- Distributed tracing
-- Advanced application-level health checks
-- Persistent incident history
-- Multi-service healing policies
-- Kubernetes-based deployment
-- Advanced observability using OpenTelemetry
-
----
-
-## 16. Author
-
-**Rami Ghazzawi**
-
-Computer Science Student
-An-Najah National University
-
-Focus:
+The general workflow is:
 
 ```text
-Cloud Engineering
-DevOps
-Cloud Infrastructure
-Automation
-Self-Healing Systems
+Git Push
+   │
+   ▼
+GitHub Actions
+   │
+   ├── Application Validation
+   ├── Docker Build
 ```
+
+## 12. Setup & Deployment Guide
+
+This guide provides step-by-step instructions for deploying the **Autonomous Self-Healing Cloud Platform** using Terraform and GitHub Actions.
+
+---
+
+## 1. Prerequisites
+
+Before you begin, ensure you have the following installed and configured on your local machine:
+
+- **Git**: [Install Git](https://git-scm.com/)
+- **Terraform** (`>= 1.5.0`): [Install Terraform](https://developer.hashicorp.com/terraform/downloads)
+- **AWS CLI** (`>= 2.0`): [Install AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) configured with valid credentials (`aws configure`).
+- **Docker**: [Install Docker Desktop](https://www.docker.com/products/docker-desktop/) (required for building and pushing images).
+- **Node.js** (`>= 20.x`): [Install Node.js](https://nodejs.org/) (for local application validation).
+
+---
+
+## 2. Local Environment Setup
+
+### 1. Clone the Repository
+
+```bash
+git clone [https://github.com/your-username/self-healing-cloud-platform.git](https://github.com/your-username/self-healing-cloud-platform.git)
+cd self-healing-cloud-platform
+```
+
+**More Details in "deployment.md" file"**
