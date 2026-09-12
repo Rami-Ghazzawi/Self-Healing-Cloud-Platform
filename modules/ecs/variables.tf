@@ -48,13 +48,6 @@ variable "execution_role_name" {
   type        = string
   description = "IAM Role Name used by ECS agent (needed for inline policy attachment)"
 }
-
-variable "task_role_arn" {
-  type        = string
-  description = "IAM Role ARN assumed by the container at runtime"
-  default     = null
-}
-
 variable "db_secret_arn" {
   type        = string
   description = "ARN of the Secrets Manager secret storing DB credentials to inject"

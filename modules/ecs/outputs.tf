@@ -17,3 +17,6 @@ output "ecs_sg_id" {
   description = "ID of the Security Group assigned to ECS Fargate tasks"
   value       = aws_security_group.ecs_tasks.id
 }
+output "task_role_arn" {
+  value = aws_iam_role.ecs_task_role.arn
+}

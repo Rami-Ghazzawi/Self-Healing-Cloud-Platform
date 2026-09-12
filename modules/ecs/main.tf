@@ -31,6 +31,7 @@ resource "aws_ecs_task_definition" "app" {
   memory = "512"
 
   execution_role_arn = var.execution_role_arn
+task_role_arn = aws_iam_role.ecs_task_role.arn
 
 container_definitions = jsonencode([
     {
